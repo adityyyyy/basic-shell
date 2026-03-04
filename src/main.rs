@@ -43,8 +43,8 @@ fn main() {
                 }
             }
             _ => {
-                if let Some(path) = find_executable(command) {
-                    std::process::Command::new(path)
+                if let Some(_path) = find_executable(command) {
+                    std::process::Command::new(command)
                         .args(args)
                         .status()
                         .unwrap();
