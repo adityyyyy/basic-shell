@@ -7,30 +7,32 @@ fn main() {
         buf.clear();
         print!("$ ");
         io::stdout().flush().unwrap();
-        io::stdin().read_line(&mut buf).unwrap();
+        if io::stdin().read_line(&mut buf).unwrap() == 0 {
+            continue;
+        };
         let input = buf.trim();
-
-        let available_commands = ["exit", "echo", "type"];
-
-        let command = input.split_once(" ").map(|v| v.0).unwrap();
-
-        if !available_commands.contains(&command) {
-            println!("{command}");
+        if input.is_empty() {
             continue;
         }
 
+        let available_commands = ["exit", "echo", "type"];
+
+        let mut parts = input.split_whitespace();
+        let command = parts.next().unwrap();
+        let args: Vec<&str> = parts.collect();
+
         match command {
-            "exit" => {
-                break;
-            }
+            "exit" => break,
             "echo" => {
-                println!("{}", &input[5..]);
+                println!("{}", args.join(" "));
             }
             "type" => {
-                if available_commands.contains(&&input[5..]) {
-                    println!("{} is a shell builtin", &input[5..]);
-                } else {
-                    println!("{}: not found", &input[5..]);
+                if let Some(cmd) = args.first() {
+                    if available_commands.contains(cmd) {
+                        println!("{cmd} is a shell builtin");
+                    } else {
+                        println!("{cmd}: not found");
+                    }
                 }
             }
             _ => {
