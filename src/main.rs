@@ -13,6 +13,7 @@ fn main() {
         let available_commands = ["exit", "echo", "type"];
 
         let command = input.split_once(" ").map(|v| v.0).unwrap();
+        eprintln!("{command}");
 
         match command {
             "exit" => {
