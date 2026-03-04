@@ -8,6 +8,9 @@ fn main() {
         print!("$ ");
         io::stdout().flush().unwrap();
         io::stdin().read_line(&mut buf).unwrap();
+        if buf.trim() == "exit" {
+            break;
+        }
         println!("{}: command not found", buf.trim());
     }
 }
