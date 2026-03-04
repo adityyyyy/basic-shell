@@ -8,8 +8,12 @@ fn main() {
         print!("$ ");
         io::stdout().flush().unwrap();
         io::stdin().read_line(&mut buf).unwrap();
-        if buf.trim() == "exit" {
+        let input = buf.trim();
+        if input == "exit" {
             break;
+        }
+        if input.starts_with("echo ") {
+            println!("{}", &input[5..]);
         }
         println!("{}: command not found", buf.trim());
     }
