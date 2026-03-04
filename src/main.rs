@@ -1,7 +1,10 @@
 mod path_resolver;
 
 use path_resolver::find_executable;
-use std::io::{self, Write};
+use std::{
+    env, fs,
+    io::{self, Write},
+};
 
 fn main() {
     let mut buf = String::new();
@@ -18,7 +21,7 @@ fn main() {
             continue;
         }
 
-        let available_commands = ["exit", "echo", "type"];
+        let available_commands = ["exit", "echo", "type", "pwd"];
 
         let mut parts = input.split_whitespace();
         let command = parts.next().unwrap();
@@ -42,6 +45,14 @@ fn main() {
                     }
                 }
             }
+            "pwd" => match env::current_dir() {
+                Ok(path) => {
+                    println!("{}", path.display());
+                }
+                Err(err) => {
+                    eprintln!("pwd: {}", err)
+                }
+            },
             _ => {
                 if let Some(_path) = find_executable(command) {
                     std::process::Command::new(command)
