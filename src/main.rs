@@ -29,7 +29,7 @@ fn main() {
                 }
             }
             _ => {
-                println!("{command}: command not found");
+                println!("{}: command not found", command);
             }
         };
     }
