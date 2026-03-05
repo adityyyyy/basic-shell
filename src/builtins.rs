@@ -4,7 +4,7 @@ use crate::dir;
 use crate::path::find_executable;
 use crate::redirect::Redirections;
 
-pub const BUILTINS: &[&str] = &["exit", "echo", "type", "pwd", "cd"];
+pub const BUILTINS: &[&str] = &["exit", "echo", "type", "pwd", "cd", "history"];
 
 /// Run a builtin command. Returns `Some(exit_code)` if the shell should exit.
 pub fn run(command: &str, args: &[&str], redir: &mut Redirections) -> Option<i32> {
@@ -14,6 +14,7 @@ pub fn run(command: &str, args: &[&str], redir: &mut Redirections) -> Option<i32
         "type" => cmd_type(args, redir),
         "pwd" => cmd_pwd(redir),
         "cd" => cmd_cd(args, redir),
+        "history" => cmd_echo(&["history.txt"], redir),
         _ => unreachable!("not a builtin: {}", command),
     }
     None
