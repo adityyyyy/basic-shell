@@ -9,8 +9,9 @@ pub type Rl = rustyline::Editor<MyHelper, DefaultHistory>;
 pub fn cmd_history(rl: &mut Rl, args: &[&str], redir: &mut Redirections) {
     match args.first().copied() {
         Some("-c") => {
-            // Clear is not supported via immutable ref; inform user
-            redir.write_err("history: -c requires mutable access (not yet supported)");
+            if rl.clear_history().is_err() {
+                redir.write_err("history: failed to clear history");
+            }
         }
         Some("-d") => {
             if let Some(offset) = args.get(1) {
@@ -29,6 +30,13 @@ pub fn cmd_history(rl: &mut Rl, args: &[&str], redir: &mut Redirections) {
                 if rl.load_history(Path::new(filename)).is_err() {
                     redir.write_err(&format!("history: {} invalid option", filename));
                 }
+            } else {
+                redir.write_err("history: -r option requires an argument");
+            }
+        }
+        Some("-w") => {
+            if let Some(filename) = args.get(1) {
+                let _ = rl.save_history(filename);
             } else {
                 redir.write_err("history: -r option requires an argument");
             }

@@ -1,0 +1,8 @@
+#V2
+s
+d
+history
+echo e
+echo 4
+history
+history -w qw.txt
