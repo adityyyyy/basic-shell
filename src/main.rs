@@ -17,7 +17,6 @@ fn main() {
         let readline = rl.readline("$ ");
         let input = match readline {
             Ok(line) => {
-                let _ = rl.add_history_entry(line.as_str());
                 line
             }
             Err(ReadlineError::Interrupted) => {
@@ -63,6 +62,7 @@ fn main() {
 
         if BUILTINS.contains(&command.as_str()) {
             if let Some(code) = builtins::run(command, &args, &mut redir) {
+                save_history(&mut rl);
                 std::process::exit(code);
             }
         } else {
@@ -70,8 +70,13 @@ fn main() {
         }
     }
 
+    save_history(&mut rl);
+}
+
+#[allow(unused_variables)]
+fn save_history(rl: &mut rustyline::Editor<completions::MyHelper, rustyline::history::DefaultHistory>) {
     #[cfg(feature = "with-file-history")]
-    rl.save_history("history.txt");
+    let _ = rl.save_history("history.txt");
 }
 
 fn run_external(command: &str, args: &[&str], redir: &mut Redirections) {

@@ -2,7 +2,7 @@ use crate::builtins::BUILTINS;
 use crate::path::list_executables;
 use rustyline::{
     CompletionType, Context, Editor, Helper, Highlighter, Hinter, Result, Validator,
-    completion::{Completer, Pair, extract_word},
+    completion::{Completer, FilenameCompleter, Pair, extract_word},
     config::Configurer,
     history::DefaultHistory,
 };
@@ -10,42 +10,52 @@ use rustyline::{
 #[derive(Helper, Highlighter, Hinter, Validator)]
 pub struct MyHelper {
     executables: Vec<String>,
+    filenames: FilenameCompleter,
 }
 
 impl Completer for MyHelper {
     type Candidate = Pair;
 
-    fn complete(&self, line: &str, pos: usize, _ctx: &Context<'_>) -> Result<(usize, Vec<Pair>)> {
+    fn complete(&self, line: &str, pos: usize, ctx: &Context<'_>) -> Result<(usize, Vec<Pair>)> {
         let (word_start, prefix) = extract_word(line, pos, None, |c: char| c == ' ');
 
-        let builtins_iter = BUILTINS.iter().map(|s| *s);
-        let execs_iter = self.executables.iter().map(|s| s.as_str());
+        // If we're on the first word, complete commands; otherwise complete filenames
+        let is_first_word = line[..word_start].trim().is_empty();
 
-        let mut seen = std::collections::HashSet::new();
-        let matches: Vec<Pair> = builtins_iter
-            .chain(execs_iter)
-            .filter(|cmd| cmd.starts_with(prefix) && seen.insert(*cmd))
-            .map(|cmd| {
-                let replacement = format!("{} ", cmd);
-                Pair {
-                    display: replacement.clone(),
-                    replacement,
-                }
-            })
-            .collect();
+        if is_first_word {
+            let builtins_iter = BUILTINS.iter().copied();
+            let execs_iter = self.executables.iter().map(|s| s.as_str());
 
-        Ok((word_start, matches))
+            let mut seen = std::collections::HashSet::new();
+            let matches: Vec<Pair> = builtins_iter
+                .chain(execs_iter)
+                .filter(|cmd| cmd.starts_with(prefix) && seen.insert(*cmd))
+                .map(|cmd| {
+                    let replacement = format!("{} ", cmd);
+                    Pair {
+                        display: replacement.clone(),
+                        replacement,
+                    }
+                })
+                .collect();
+
+            Ok((word_start, matches))
+        } else {
+            self.filenames.complete(line, pos, ctx)
+        }
     }
 }
 
 pub fn get_reader() -> Editor<MyHelper, DefaultHistory> {
     let helper = MyHelper {
         executables: list_executables(),
+        filenames: FilenameCompleter::new(),
     };
 
     let mut rl = Editor::<MyHelper, DefaultHistory>::new().expect("failed to create editor");
     rl.set_helper(Some(helper));
     rl.set_completion_type(CompletionType::List);
+    rl.set_auto_add_history(true);
 
     #[cfg(feature = "with-file-history")]
     if rl.load_history("history.txt").is_err() {
