@@ -1,5 +1,7 @@
 mod shell;
 
+use std::env;
+
 use rustyline::error::ReadlineError;
 use shell::builtins::{self, BUILTINS, cmd_history};
 use shell::exec;
@@ -78,5 +80,7 @@ fn save_history(
     rl: &mut rustyline::Editor<shell::completions::MyHelper, rustyline::history::DefaultHistory>,
 ) {
     #[cfg(feature = "with-file-history")]
-    let _ = rl.save_history("history.txt");
+    if let Ok(histfile) = env::var("HISTFILE") {
+        let _ = rl.save_history(std::path::Path::new(&histfile));
+    }
 }

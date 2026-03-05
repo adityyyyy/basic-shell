@@ -67,7 +67,9 @@ pub fn get_reader() -> Editor<MyHelper, DefaultHistory> {
     let _ = rl.set_history_ignore_dups(false);
 
     #[cfg(feature = "with-file-history")]
-    let _ = rl.load_history("history.txt");
+    if let Ok(histfile) = std::env::var("HISTFILE") {
+        let _ = rl.load_history(std::path::Path::new(&histfile));
+    }
 
     rl
 }
