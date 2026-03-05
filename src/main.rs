@@ -14,50 +14,74 @@ use utils::resolve_directory;
 
 const BUILTIN_COMMANDS: &[&str] = &["exit", "echo", "type", "pwd", "cd"];
 
-/// Represents a parsed redirection target for stdout.
-struct Redirection {
-    file: File,
+/// Holds optional stdout and stderr redirection targets.
+struct Redirections {
+    stdout_file: Option<File>,
+    stderr_file: Option<File>,
 }
 
-/// Scan tokens for `>` or `1>`, extract the filename, and return
-/// (command_tokens, Option<Redirection>). Creates parent dirs as needed.
-fn parse_redirection(tokens: &[String]) -> Result<(Vec<String>, Option<Redirection>), String> {
-    // Find the first `>` or `1>` token
-    let redir_pos = tokens.iter().position(|t| t == ">" || t == "1>");
-
-    match redir_pos {
-        Some(pos) => {
-            let filename = tokens
-                .get(pos + 1)
-                .ok_or_else(|| "syntax error: expected filename after redirection".to_string())?;
-
-            // Create parent directories if they don't exist
-            let path = Path::new(filename);
-            if let Some(parent) = path.parent()
-                && !parent.as_os_str().is_empty()
-                && !parent.exists()
-            {
-                fs::create_dir_all(parent).map_err(|e| format!("{}: {}", filename, e))?;
-            }
-
-            let file = File::create(path).map_err(|e| format!("{}: {}", filename, e))?;
-
-            // Everything before the redirection operator is the command + args
-            let cmd_tokens = tokens[..pos].to_vec();
-            Ok((cmd_tokens, Some(Redirection { file })))
-        }
-        None => Ok((tokens.to_vec(), None)),
+/// Open a file for redirection, creating parent directories as needed.
+fn open_redirect_file(filename: &str) -> Result<File, String> {
+    let path = Path::new(filename);
+    if let Some(parent) = path.parent()
+        && !parent.as_os_str().is_empty()
+        && !parent.exists()
+    {
+        fs::create_dir_all(parent).map_err(|e| format!("{}: {}", filename, e))?;
     }
+    File::create(path).map_err(|e| format!("{}: {}", filename, e))
 }
 
-/// Write a line to the redirect file if present, otherwise to stdout.
-fn write_output(redir: &mut Option<Redirection>, output: &str) {
-    match redir {
-        Some(r) => {
-            let _ = writeln!(r.file, "{}", output);
+/// Scan tokens for `>`, `1>`, and `2>`, extract filenames, and return
+/// (command_tokens, Redirections). Supports both stdout and stderr redirection.
+fn parse_redirections(tokens: &[String]) -> Result<(Vec<String>, Redirections), String> {
+    let mut cmd_tokens = Vec::new();
+    let mut stdout_file: Option<File> = None;
+    let mut stderr_file: Option<File> = None;
+
+    let mut i = 0;
+    while i < tokens.len() {
+        if tokens[i] == ">" || tokens[i] == "1>" {
+            let filename = tokens
+                .get(i + 1)
+                .ok_or_else(|| "syntax error: expected filename after redirection".to_string())?;
+            stdout_file = Some(open_redirect_file(filename)?);
+            i += 2; // skip operator + filename
+        } else if tokens[i] == "2>" {
+            let filename = tokens
+                .get(i + 1)
+                .ok_or_else(|| "syntax error: expected filename after redirection".to_string())?;
+            stderr_file = Some(open_redirect_file(filename)?);
+            i += 2;
+        } else {
+            cmd_tokens.push(tokens[i].clone());
+            i += 1;
+        }
+    }
+
+    Ok((cmd_tokens, Redirections { stdout_file, stderr_file }))
+}
+
+/// Write to the redirect file if present, otherwise to stdout.
+fn write_output(redir: &mut Redirections, output: &str) {
+    match redir.stdout_file {
+        Some(ref mut f) => {
+            let _ = writeln!(f, "{}", output);
         }
         None => {
             println!("{}", output);
+        }
+    }
+}
+
+/// Write to the stderr redirect file if present, otherwise to stderr.
+fn write_error(redir: &mut Redirections, output: &str) {
+    match redir.stderr_file {
+        Some(ref mut f) => {
+            let _ = writeln!(f, "{}", output);
+        }
+        None => {
+            eprintln!("{}", output);
         }
     }
 }
@@ -87,8 +111,8 @@ fn main() {
             continue;
         }
 
-        // Parse redirection before dispatching the command
-        let (cmd_tokens, mut redir) = match parse_redirection(&tokens) {
+        // Parse redirections (>, 1>, 2>) before dispatching the command
+        let (cmd_tokens, mut redir) = match parse_redirections(&tokens) {
             Ok(result) => result,
             Err(err) => {
                 eprintln!("shell: {}", err);
@@ -118,7 +142,7 @@ fn main() {
                         write_output(&mut redir, &format!("{}: not found", cmd));
                     }
                 } else {
-                    eprintln!("type: missing argument");
+                    write_error(&mut redir, "type: missing argument");
                 }
             }
             "pwd" => match env::current_dir() {
@@ -126,7 +150,7 @@ fn main() {
                     write_output(&mut redir, &format!("{}", path.display()));
                 }
                 Err(err) => {
-                    eprintln!("pwd: {}", err);
+                    write_error(&mut redir, &format!("pwd: {}", err));
                 }
             },
             "cd" => {
@@ -136,7 +160,7 @@ fn main() {
                     match env::var("HOME") {
                         Ok(home) => home,
                         Err(_) => {
-                            eprintln!("cd: HOME not set");
+                            write_error(&mut redir, "cd: HOME not set");
                             continue;
                         }
                     }
@@ -144,11 +168,11 @@ fn main() {
                 match resolve_directory(&target) {
                     Ok(path) => {
                         if let Err(err) = env::set_current_dir(&path) {
-                            eprintln!("cd: {}: {}", target, err);
+                            write_error(&mut redir, &format!("cd: {}: {}", target, err));
                         }
                     }
                     Err(err) => {
-                        eprintln!("cd: {}", err);
+                        write_error(&mut redir, &format!("cd: {}", err));
                     }
                 }
             }
@@ -158,18 +182,25 @@ fn main() {
                     cmd.args(&args);
 
                     // Redirect stdout to file if `>` / `1>` was used
-                    if let Some(ref redir) = redir {
-                        let stdout_file = redir
-                            .file
+                    if let Some(ref f) = redir.stdout_file {
+                        let cloned = f
                             .try_clone()
-                            .expect("failed to clone redirect file handle");
-                        cmd.stdout(std::process::Stdio::from(stdout_file));
+                            .expect("failed to clone stdout redirect file handle");
+                        cmd.stdout(std::process::Stdio::from(cloned));
+                    }
+
+                    // Redirect stderr to file if `2>` was used
+                    if let Some(ref f) = redir.stderr_file {
+                        let cloned = f
+                            .try_clone()
+                            .expect("failed to clone stderr redirect file handle");
+                        cmd.stderr(std::process::Stdio::from(cloned));
                     }
 
                     match cmd.status() {
                         Ok(_status) => {}
                         Err(err) => {
-                            eprintln!("{}: {}", command, err);
+                            write_error(&mut redir, &format!("{}: {}", command, err));
                         }
                     }
                 } else {
