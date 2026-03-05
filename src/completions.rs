@@ -19,9 +19,13 @@ impl Completer for MyHelper {
         let matches: Vec<Pair> = COMPLETION_COMMANDS
             .iter()
             .filter(|cmd| cmd.starts_with(prefix))
-            .map(|cmd| Pair {
-                display: cmd.to_string(),
-                replacement: cmd.to_string(),
+            .map(|cmd| {
+                let mut com = cmd.to_string();
+                com.push(' ');
+                Pair {
+                    display: com.clone(),
+                    replacement: com.clone(),
+                }
             })
             .collect();
 
