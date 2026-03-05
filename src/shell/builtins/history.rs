@@ -1,3 +1,4 @@
+use std::io::Write;
 use std::path::Path;
 
 use crate::shell::completions::MyHelper;
@@ -36,9 +37,16 @@ pub fn cmd_history(rl: &mut Rl, args: &[&str], redir: &mut Redirections) {
         }
         Some("-w") => {
             if let Some(filename) = args.get(1) {
-                let _ = rl.save_history(filename);
+                match std::fs::File::create(filename) {
+                    Ok(mut f) => {
+                        for entry in rl.history().iter() {
+                            let _ = writeln!(f, "{}", entry);
+                        }
+                    }
+                    Err(e) => redir.write_err(&format!("history: {}: {}", filename, e)),
+                }
             } else {
-                redir.write_err("history: -r option requires an argument");
+                redir.write_err("history: -w: option requires an argument");
             }
         }
         Some(n_str) => match n_str.parse::<usize>() {
