@@ -73,6 +73,14 @@ pub fn tokenize(input: &str) -> Result<Vec<String>, String> {
                     in_token = false;
                 }
             }
+            '|' => {
+                chars.next();
+                if in_token {
+                    tokens.push(std::mem::take(&mut current));
+                    in_token = false;
+                }
+                tokens.push("|".to_string());
+            }
             _ => {
                 current.push(ch);
                 chars.next();
