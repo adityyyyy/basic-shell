@@ -45,7 +45,7 @@ pub fn get_reader() -> Editor<MyHelper, DefaultHistory> {
 
     let mut rl = Editor::<MyHelper, DefaultHistory>::new().expect("failed to create editor");
     rl.set_helper(Some(helper));
-    rl.set_completion_type(CompletionType::Circular);
+    rl.set_completion_type(CompletionType::List);
 
     #[cfg(feature = "with-file-history")]
     if rl.load_history("history.txt").is_err() {
