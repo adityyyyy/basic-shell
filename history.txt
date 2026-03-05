@@ -1,4 +1,0 @@
-#V2
-echo 4+5
-history
-exit
