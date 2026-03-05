@@ -26,13 +26,20 @@ pub fn cmd_history(rl: &mut Rl, args: &[&str], redir: &mut Redirections) {
                 redir.write_err("history: -d: option requires an argument");
             }
         }
+        Some("-a") => {
+            if let Some(filename) = args.get(1) {
+                let _ = rl.save_history(Path::new(filename));
+            } else {
+                redir.write_err("history: -a: option requires an argument");
+            }
+        }
         Some("-r") => {
             if let Some(filename) = args.get(1) {
                 if rl.load_history(Path::new(filename)).is_err() {
-                    redir.write_err(&format!("history: {} invalid option", filename));
+                    redir.write_err(&format!("history: {}: cannot read", filename));
                 }
             } else {
-                redir.write_err("history: -r option requires an argument");
+                redir.write_err("history: -r: option requires an argument");
             }
         }
         Some("-w") => {

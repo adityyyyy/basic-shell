@@ -11,7 +11,10 @@ fn main() {
     loop {
         let readline = rl.readline("$ ");
         let input = match readline {
-            Ok(line) => line,
+            Ok(line) => {
+                let _ = rl.add_history_entry(line.as_str());
+                line
+            }
             Err(ReadlineError::Interrupted) => {
                 println!("CTRL-C");
                 break;
@@ -79,5 +82,12 @@ fn save_history(
     rl: &mut rustyline::Editor<shell::completions::MyHelper, rustyline::history::DefaultHistory>,
 ) {
     #[cfg(feature = "with-file-history")]
-    let _ = rl.save_history("history.txt");
+    {
+        use std::io::Write;
+        if let Ok(mut f) = std::fs::File::create("history.txt") {
+            for entry in rl.history().iter() {
+                let _ = writeln!(f, "{}", entry);
+            }
+        }
+    }
 }

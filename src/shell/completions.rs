@@ -64,6 +64,7 @@ pub fn get_reader() -> Editor<MyHelper, DefaultHistory> {
     rl.set_helper(Some(helper));
     rl.set_completion_type(CompletionType::List);
     rl.set_auto_add_history(true);
+    let _ = rl.set_history_ignore_dups(false);
 
     #[cfg(feature = "with-file-history")]
     let _ = rl.load_history("history.txt");
