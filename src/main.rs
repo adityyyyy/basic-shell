@@ -5,12 +5,62 @@ mod utils;
 use executable_file_absolute_path_resolver::find_executable;
 use std::{
     env,
+    fs::{self, File},
     io::{self, Write},
+    path::Path,
 };
 use tokenizer::tokenize;
 use utils::resolve_directory;
 
 const BUILTIN_COMMANDS: &[&str] = &["exit", "echo", "type", "pwd", "cd"];
+
+/// Represents a parsed redirection target for stdout.
+struct Redirection {
+    file: File,
+}
+
+/// Scan tokens for `>` or `1>`, extract the filename, and return
+/// (command_tokens, Option<Redirection>). Creates parent dirs as needed.
+fn parse_redirection(tokens: &[String]) -> Result<(Vec<String>, Option<Redirection>), String> {
+    // Find the first `>` or `1>` token
+    let redir_pos = tokens.iter().position(|t| t == ">" || t == "1>");
+
+    match redir_pos {
+        Some(pos) => {
+            let filename = tokens
+                .get(pos + 1)
+                .ok_or_else(|| "syntax error: expected filename after redirection".to_string())?;
+
+            // Create parent directories if they don't exist
+            let path = Path::new(filename);
+            if let Some(parent) = path.parent()
+                && !parent.as_os_str().is_empty()
+                && !parent.exists()
+            {
+                fs::create_dir_all(parent).map_err(|e| format!("{}: {}", filename, e))?;
+            }
+
+            let file = File::create(path).map_err(|e| format!("{}: {}", filename, e))?;
+
+            // Everything before the redirection operator is the command + args
+            let cmd_tokens = tokens[..pos].to_vec();
+            Ok((cmd_tokens, Some(Redirection { file })))
+        }
+        None => Ok((tokens.to_vec(), None)),
+    }
+}
+
+/// Write a line to the redirect file if present, otherwise to stdout.
+fn write_output(redir: &mut Option<Redirection>, output: &str) {
+    match redir {
+        Some(r) => {
+            let _ = writeln!(r.file, "{}", output);
+        }
+        None => {
+            println!("{}", output);
+        }
+    }
+}
 
 fn main() {
     let mut buf = String::new();
@@ -37,22 +87,35 @@ fn main() {
             continue;
         }
 
-        let command = &tokens[0];
-        let args: Vec<&str> = tokens[1..].iter().map(|s| s.as_str()).collect();
+        // Parse redirection before dispatching the command
+        let (cmd_tokens, mut redir) = match parse_redirection(&tokens) {
+            Ok(result) => result,
+            Err(err) => {
+                eprintln!("shell: {}", err);
+                continue;
+            }
+        };
+
+        if cmd_tokens.is_empty() {
+            continue;
+        }
+
+        let command = &cmd_tokens[0];
+        let args: Vec<&str> = cmd_tokens[1..].iter().map(|s| s.as_str()).collect();
 
         match command.as_str() {
             "exit" => break,
             "echo" => {
-                println!("{}", args.join(" "));
+                write_output(&mut redir, &args.join(" "));
             }
             "type" => {
                 if let Some(cmd) = args.first() {
                     if BUILTIN_COMMANDS.contains(cmd) {
-                        println!("{cmd} is a shell builtin");
+                        write_output(&mut redir, &format!("{cmd} is a shell builtin"));
                     } else if let Some(path) = find_executable(cmd) {
-                        println!("{} is {}", cmd, path.display());
+                        write_output(&mut redir, &format!("{} is {}", cmd, path.display()));
                     } else {
-                        println!("{}: not found", cmd);
+                        write_output(&mut redir, &format!("{}: not found", cmd));
                     }
                 } else {
                     eprintln!("type: missing argument");
@@ -60,7 +123,7 @@ fn main() {
             }
             "pwd" => match env::current_dir() {
                 Ok(path) => {
-                    println!("{}", path.display());
+                    write_output(&mut redir, &format!("{}", path.display()));
                 }
                 Err(err) => {
                     eprintln!("pwd: {}", err);
@@ -70,7 +133,6 @@ fn main() {
                 let target = if let Some(dir) = args.first() {
                     dir.to_string()
                 } else {
-                    // cd with no args goes to $HOME
                     match env::var("HOME") {
                         Ok(home) => home,
                         Err(_) => {
@@ -92,17 +154,26 @@ fn main() {
             }
             _ => {
                 if find_executable(command).is_some() {
-                    match std::process::Command::new(command.as_str())
-                        .args(&args)
-                        .status()
-                    {
+                    let mut cmd = std::process::Command::new(command.as_str());
+                    cmd.args(&args);
+
+                    // Redirect stdout to file if `>` / `1>` was used
+                    if let Some(ref redir) = redir {
+                        let stdout_file = redir
+                            .file
+                            .try_clone()
+                            .expect("failed to clone redirect file handle");
+                        cmd.stdout(std::process::Stdio::from(stdout_file));
+                    }
+
+                    match cmd.status() {
                         Ok(_status) => {}
                         Err(err) => {
                             eprintln!("{}: {}", command, err);
                         }
                     }
                 } else {
-                    println!("{}: command not found", command);
+                    write_output(&mut redir, &format!("{}: command not found", command));
                 }
             }
         };
