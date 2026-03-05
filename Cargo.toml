@@ -5,4 +5,8 @@ authors = ["Codecrafters <hello@codecrafters.io>"]
 edition = "2024"
 rust-version = "1.91"
 
+[features]
+with-file-history = []
+
 [dependencies]
+rustyline = {version= "17.0.2", features=["derive"]}

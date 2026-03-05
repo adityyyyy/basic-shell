@@ -1,9 +1,12 @@
 #[cfg(unix)]
 use std::os::unix::fs::PermissionsExt;
 
-pub fn find_executable(cmd: &str) -> Option<std::path::PathBuf> {
+use std::path::{Path, PathBuf};
+
+/// Search for an executable by name, checking absolute paths and `$PATH`.
+pub fn find_executable(cmd: &str) -> Option<PathBuf> {
     if cmd.starts_with("/") {
-        let path = std::path::Path::new(cmd);
+        let path = Path::new(cmd);
         if is_executable(path) {
             return Some(path.to_path_buf());
         }
@@ -21,7 +24,7 @@ pub fn find_executable(cmd: &str) -> Option<std::path::PathBuf> {
     None
 }
 
-fn is_executable(path: &std::path::Path) -> bool {
+fn is_executable(path: &Path) -> bool {
     match std::fs::metadata(path) {
         Ok(m) if m.is_file() => {
             #[cfg(unix)]
@@ -30,7 +33,6 @@ fn is_executable(path: &std::path::Path) -> bool {
             }
             #[cfg(not(unix))]
             {
-                // On non-unix, just check if it's a file
                 true
             }
         }

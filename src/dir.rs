@@ -1,6 +1,7 @@
 use std::{env, fs, path::PathBuf};
 
-pub fn resolve_directory(input: &str) -> Result<PathBuf, String> {
+/// Resolve a directory path, expanding `~` to `$HOME`.
+pub fn resolve(input: &str) -> Result<PathBuf, String> {
     let path = expand_tilde(input);
     match fs::metadata(&path) {
         Ok(metadata) => {
