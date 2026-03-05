@@ -1,5 +1,23 @@
-#V2
-ri
+ri11111
 history
-tldr ri
+
+1
+echo pear
+echo pear
+echo er
+echo er
+history -a his.txt 
+history -a his.txt 
+history -a his.txt
+history -a his.txt
+bat his.txt
+bat his.txt
+exit
+exit
+history
+history -a his.txt 
+history -a his.txt 
+exit
+echo run
+history -a his.txt
 history -a his.txt

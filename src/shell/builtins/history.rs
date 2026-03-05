@@ -1,6 +1,7 @@
 use std::path::Path;
 use std::{fs::OpenOptions, io::Write};
 
+use crate::save_history;
 use crate::shell::completions::MyHelper;
 use crate::shell::redirect::Redirections;
 use rustyline::history::{DefaultHistory, History};
@@ -37,6 +38,7 @@ pub fn cmd_history(rl: &mut Rl, args: &[&str], redir: &mut Redirections) {
                     }
                     Err(e) => redir.write_err(&format!("history: {}: {}", filename, e)),
                 }
+                let _ = rl.clear_history();
             } else {
                 redir.write_err("history: -a: option requires an argument");
             }
