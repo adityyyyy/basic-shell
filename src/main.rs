@@ -3,6 +3,7 @@ mod shell;
 use std::env;
 
 use rustyline::error::ReadlineError;
+use rustyline::history::History;
 use shell::builtins::{self, BUILTINS, cmd_history};
 use shell::exec;
 use shell::redirect;
@@ -10,6 +11,7 @@ use shell::tokenizer::tokenize;
 
 fn main() {
     let mut rl = shell::completions::get_reader();
+    let initial_history_len = rl.history().len();
     let mut last_flushed: usize = 0;
     loop {
         let readline = rl.readline("$ ");
@@ -63,7 +65,7 @@ fn main() {
                 cmd_history(&mut rl, &args, &mut redir, &mut last_flushed);
             } else if BUILTINS.contains(&command.as_str()) {
                 if let Some(code) = builtins::run(command, &args, &mut redir) {
-                    save_history(&mut rl);
+                    save_history(&mut rl, initial_history_len);
                     std::process::exit(code);
                 }
             } else {
@@ -74,11 +76,12 @@ fn main() {
         }
     }
 
-    save_history(&mut rl);
+    save_history(&mut rl, initial_history_len);
 }
 
 fn save_history(
     rl: &mut rustyline::Editor<shell::completions::MyHelper, rustyline::history::DefaultHistory>,
+    skip: usize,
 ) {
     #[cfg(feature = "with-file-history")]
     if let Ok(histfile) = env::var("HISTFILE") {
@@ -88,7 +91,7 @@ fn save_history(
             .open(&histfile)
         {
             use std::io::Write;
-            for entry in rl.history().iter() {
+            for entry in rl.history().iter().skip(skip) {
                 let _ = writeln!(f, "{}", entry);
             }
         }
