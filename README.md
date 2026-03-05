@@ -1,35 +1,88 @@
-[![progress-banner](https://backend.codecrafters.io/progress/shell/b90b263c-0334-4d98-96e1-b5a8c0abf1be)](https://app.codecrafters.io/users/codecrafters-bot?r=2qF)
+# codecrafters-shell
 
-This is a starting point for Rust solutions to the
-["Build Your Own Shell" Challenge](https://app.codecrafters.io/courses/shell/overview).
+A Unix-like shell built from scratch in Rust, created as a [CodeCrafters](https://codecrafters.io/) challenge solution. It supports builtin and external commands, pipelines, I/O redirections, tab completion, and persistent history.
 
-In this challenge, you'll build your own POSIX compliant shell that's capable of
-interpreting shell commands, running external programs and builtin commands like
-cd, pwd, echo and more. Along the way, you'll learn about shell command parsing,
-REPLs, builtin commands, and more.
+## Features
 
-**Note**: If you're viewing this repo on GitHub, head over to
-[codecrafters.io](https://codecrafters.io) to try the challenge.
+- **Builtin commands**: `echo`, `exit`, `cd`, `pwd`, `type`, `history`
+- **External commands**: searches `$PATH` or accepts absolute paths
+- **Pipelines**: chain commands with `|` (e.g. `ls | grep foo | wc -l`)
+- **I/O redirections**: `>`, `>>`, `1>`, `1>>`, `2>`, `2>>`
+- **Tab completion**: builtins, `$PATH` executables, and filenames/directories
+- **Command history**: in-memory + optional persistent file via `HISTFILE`
+- **Quoting & escaping**: single quotes, double quotes (with `\\`, `\"`, `\$`, `` \` ``, `\n`), and backslash escapes
 
-# Passing the first stage
+## Builtin Commands
 
-The entry point for your `shell` implementation is in `src/main.rs`. Study and
-uncomment the relevant code, then run the command below to execute the tests on
-our servers:
+| Command | Usage | Description |
+|---------|-------|-------------|
+| `echo`  | `echo [args...]` | Print arguments to stdout |
+| `exit`  | `exit [code]` | Exit the shell (default code: 0) |
+| `cd`    | `cd [dir]` | Change directory; supports `~` expansion, defaults to `$HOME` |
+| `pwd`   | `pwd` | Print working directory |
+| `type`  | `type command` | Show whether a command is a builtin or its executable path |
+| `history` | `history [N \| -c \| -a file \| -w file \| -r file]` | Manage command history |
+
+### History Options
+
+| Flag | Description |
+|------|-------------|
+| *(none)* | List all history with line numbers |
+| `N` | Show last N entries |
+| `-c` | Clear history |
+| `-a file` | Append new (unflushed) entries to file |
+| `-w file` | Write all history to file |
+| `-r file` | Read and load history from file |
+
+## Building & Running
 
 ```sh
-codecrafters submit
+cargo build --release
+./target/release/codecrafters-shell
+
+# or for development
+cargo run
 ```
 
-Time to move on to the next stage!
+Set `HISTFILE` to persist history across sessions:
 
-# Stage 2 & beyond
+```sh
+export HISTFILE=~/.shell_history
+cargo run
+```
 
-Note: This section is for stages 2 and beyond.
+## Project Structure
 
-1. Ensure you have `cargo (1.93)` installed locally
-1. Run `./your_program.sh` to run your program, which is implemented in
-   `src/main.rs`. This command compiles your Rust project, so it might be slow
-   the first time you run it. Subsequent runs will be fast.
-1. Commit your changes and run `git push origin master` to submit your solution
-   to CodeCrafters. Test output will be streamed to your terminal.
+```
+src/
+├── main.rs                    # REPL loop, history saving
+└── shell/
+    ├── mod.rs
+    ├── builtins/
+    │   ├── mod.rs             # Builtin registry & dispatch
+    │   ├── echo.rs
+    │   ├── exit.rs
+    │   ├── cd.rs
+    │   ├── pwd.rs
+    │   ├── type_cmd.rs
+    │   └── history.rs
+    ├── exec.rs                # External command & pipeline execution
+    ├── redirect.rs            # I/O redirection parsing
+    ├── tokenizer.rs           # Tokenizer with quote/escape support
+    ├── completions.rs         # Tab completion (commands + filenames)
+    └── util/
+        ├── mod.rs
+        ├── path.rs            # $PATH searching & executable listing
+        └── dir.rs             # Directory resolution & ~ expansion
+```
+
+## Dependencies
+
+- **Rust** 2024 edition (MSRV 1.91)
+- [rustyline](https://crates.io/crates/rustyline) 17.0.2 — line editing, history, and tab completion
+
+## Cargo Features
+
+| Feature | Default | Description |
+|---------|---------|-------------|
+| `with-file-history` | yes | Enable persistent history via `HISTFILE` |
