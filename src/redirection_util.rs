@@ -1,5 +1,5 @@
 use std::{
-    fs::{self, File},
+    fs::{self, File, OpenOptions},
     io::Write,
     path::Path,
 };
@@ -22,8 +22,24 @@ pub fn open_redirect_file(filename: &str) -> Result<File, String> {
     File::create(path).map_err(|e| format!("{}: {}", filename, e))
 }
 
-/// Scan tokens for `>`, `1>`, and `2>`, extract filenames, and return
-/// (command_tokens, Redirections). Supports both stdout and stderr redirection.
+/// Open a file for append redirection, creating parent directories as needed.
+fn open_redirect_file_append(filename: &str) -> Result<File, String> {
+    let path = Path::new(filename);
+    if let Some(parent) = path.parent()
+        && !parent.as_os_str().is_empty()
+        && !parent.exists()
+    {
+        fs::create_dir_all(parent).map_err(|e| format!("{}: {}", filename, e))?;
+    }
+    OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(path)
+        .map_err(|e| format!("{}: {}", filename, e))
+}
+
+/// Scan tokens for `>`, `1>`, `>>`, `1>>`, `2>`, and `2>>`, extract filenames,
+/// and return (command_tokens, Redirections).
 pub fn parse_redirections(tokens: &[String]) -> Result<(Vec<String>, Redirections), String> {
     let mut cmd_tokens = Vec::new();
     let mut stdout_file: Option<File> = None;
@@ -31,21 +47,39 @@ pub fn parse_redirections(tokens: &[String]) -> Result<(Vec<String>, Redirection
 
     let mut i = 0;
     while i < tokens.len() {
-        if tokens[i] == ">" || tokens[i] == "1>" {
-            let filename = tokens
-                .get(i + 1)
-                .ok_or_else(|| "syntax error: expected filename after redirection".to_string())?;
-            stdout_file = Some(open_redirect_file(filename)?);
-            i += 2; // skip operator + filename
-        } else if tokens[i] == "2>" {
-            let filename = tokens
-                .get(i + 1)
-                .ok_or_else(|| "syntax error: expected filename after redirection".to_string())?;
-            stderr_file = Some(open_redirect_file(filename)?);
-            i += 2;
-        } else {
-            cmd_tokens.push(tokens[i].clone());
-            i += 1;
+        match tokens[i].as_str() {
+            ">" | "1>" => {
+                let filename = tokens
+                    .get(i + 1)
+                    .ok_or_else(|| "syntax error: expected filename after redirection".to_string())?;
+                stdout_file = Some(open_redirect_file(filename)?);
+                i += 2;
+            }
+            ">>" | "1>>" => {
+                let filename = tokens
+                    .get(i + 1)
+                    .ok_or_else(|| "syntax error: expected filename after redirection".to_string())?;
+                stdout_file = Some(open_redirect_file_append(filename)?);
+                i += 2;
+            }
+            "2>" => {
+                let filename = tokens
+                    .get(i + 1)
+                    .ok_or_else(|| "syntax error: expected filename after redirection".to_string())?;
+                stderr_file = Some(open_redirect_file(filename)?);
+                i += 2;
+            }
+            "2>>" => {
+                let filename = tokens
+                    .get(i + 1)
+                    .ok_or_else(|| "syntax error: expected filename after redirection".to_string())?;
+                stderr_file = Some(open_redirect_file_append(filename)?);
+                i += 2;
+            }
+            _ => {
+                cmd_tokens.push(tokens[i].clone());
+                i += 1;
+            }
         }
     }
 
