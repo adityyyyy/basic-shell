@@ -1,2 +1,6 @@
 #V2
+echo Cargo.toml 
+ls
+exit
+history
 exit

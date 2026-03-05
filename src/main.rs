@@ -18,6 +18,7 @@ fn main() {
         let readline = rl.readline("$ ");
         let input = match readline {
             Ok(line) => {
+                let _ = rl.add_history_entry(line.as_str());
                 line
             }
             Err(ReadlineError::Interrupted) => {
@@ -65,7 +66,9 @@ fn main() {
             let command = &cmd_tokens[0];
             let args: Vec<&str> = cmd_tokens[1..].iter().map(|s| s.as_str()).collect();
 
-            if BUILTINS.contains(&command.as_str()) {
+            if command == "history" {
+                cmd_history(&rl, &mut redir);
+            } else if BUILTINS.contains(&command.as_str()) {
                 if let Some(code) = builtins::run(command, &args, &mut redir) {
                     save_history(&mut rl);
                     std::process::exit(code);
@@ -85,6 +88,14 @@ fn main() {
 fn save_history(rl: &mut rustyline::Editor<completions::MyHelper, rustyline::history::DefaultHistory>) {
     #[cfg(feature = "with-file-history")]
     let _ = rl.save_history("history.txt");
+}
+
+type Rl = rustyline::Editor<completions::MyHelper, rustyline::history::DefaultHistory>;
+
+fn cmd_history(rl: &Rl, redir: &mut Redirections) {
+    for (i, entry) in rl.history().iter().enumerate() {
+        redir.write_out(&format!("{:>4}  {}", i + 1, entry));
+    }
 }
 
 fn run_external(command: &str, args: &[&str], redir: &mut Redirections) {

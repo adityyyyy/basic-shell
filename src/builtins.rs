@@ -14,7 +14,7 @@ pub fn run(command: &str, args: &[&str], redir: &mut Redirections) -> Option<i32
         "type" => cmd_type(args, redir),
         "pwd" => cmd_pwd(redir),
         "cd" => cmd_cd(args, redir),
-        "history" => cmd_echo(&["history.txt"], redir),
+        "history" => {} // handled in main.rs
         _ => unreachable!("not a builtin: {}", command),
     }
     None
