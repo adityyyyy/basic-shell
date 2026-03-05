@@ -41,7 +41,13 @@ impl Completer for MyHelper {
 
             Ok((word_start, matches))
         } else {
-            self.filenames.complete(line, pos, ctx)
+            let (start, mut pairs) = self.filenames.complete(line, pos, ctx)?;
+            for pair in &mut pairs {
+                if !pair.replacement.ends_with('/') && !pair.replacement.ends_with(' ') {
+                    pair.replacement.push(' ');
+                }
+            }
+            Ok((start, pairs))
         }
     }
 }
