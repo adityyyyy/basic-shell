@@ -1,11 +1,10 @@
+use crate::builtins::BUILTINS;
 use rustyline::{
     CompletionType, Context, Editor, Helper, Highlighter, Hinter, Result, Validator,
     completion::{Completer, Pair, extract_word},
     config::Configurer,
     history::DefaultHistory,
 };
-
-const COMPLETION_COMMANDS: &[&str] = &["echo", "exit"];
 
 #[derive(Helper, Highlighter, Hinter, Validator)]
 pub struct MyHelper;
@@ -16,7 +15,7 @@ impl Completer for MyHelper {
     fn complete(&self, line: &str, pos: usize, _ctx: &Context<'_>) -> Result<(usize, Vec<Pair>)> {
         let (word_start, prefix) = extract_word(line, pos, None, |c: char| c == ' ');
 
-        let matches: Vec<Pair> = COMPLETION_COMMANDS
+        let matches: Vec<Pair> = BUILTINS
             .iter()
             .filter(|cmd| cmd.starts_with(prefix))
             .map(|cmd| {

@@ -38,15 +38,23 @@ impl Redirections {
 
     /// Clone the stdout file handle as a `Stdio`, if redirected.
     pub fn stdout_stdio(&self) -> Option<Stdio> {
-        self.stdout_file.as_ref().map(|f| {
-            Stdio::from(f.try_clone().expect("failed to clone stdout redirect handle"))
+        self.stdout_file.as_ref().and_then(|f| match f.try_clone() {
+            Ok(f) => Some(Stdio::from(f)),
+            Err(e) => {
+                eprintln!("shell: failed to clone stdout redirect: {}", e);
+                None
+            }
         })
     }
 
     /// Clone the stderr file handle as a `Stdio`, if redirected.
     pub fn stderr_stdio(&self) -> Option<Stdio> {
-        self.stderr_file.as_ref().map(|f| {
-            Stdio::from(f.try_clone().expect("failed to clone stderr redirect handle"))
+        self.stderr_file.as_ref().and_then(|f| match f.try_clone() {
+            Ok(f) => Some(Stdio::from(f)),
+            Err(e) => {
+                eprintln!("shell: failed to clone stderr redirect: {}", e);
+                None
+            }
         })
     }
 }

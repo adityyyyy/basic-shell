@@ -11,7 +11,7 @@ pub fn resolve(input: &str) -> Result<PathBuf, String> {
                 Err(format!("{}: Not a directory", input))
             }
         }
-        Err(_) => Err(format!("{}: No such file or directory", input)),
+        Err(err) => Err(format!("{}: {}", input, err)),
     }
 }
 

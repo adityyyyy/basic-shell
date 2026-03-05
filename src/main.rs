@@ -35,7 +35,13 @@ fn main() {
         };
 
         let input = input.trim();
-        let tokens = tokenize(input);
+        let tokens = match tokenize(input) {
+            Ok(t) => t,
+            Err(e) => {
+                eprintln!("shell: {}", e);
+                continue;
+            }
+        };
         if tokens.is_empty() {
             continue;
         }
@@ -56,8 +62,8 @@ fn main() {
         let args: Vec<&str> = cmd_tokens[1..].iter().map(|s| s.as_str()).collect();
 
         if BUILTINS.contains(&command.as_str()) {
-            if builtins::run(command, &args, &mut redir) {
-                break;
+            if let Some(code) = builtins::run(command, &args, &mut redir) {
+                std::process::exit(code);
             }
         } else {
             run_external(command, &args, &mut redir);
@@ -85,6 +91,6 @@ fn run_external(command: &str, args: &[&str], redir: &mut Redirections) {
             Err(err) => redir.write_err(&format!("{}: {}", command, err)),
         }
     } else {
-        redir.write_out(&format!("{}: command not found", command));
+        redir.write_err(&format!("{}: command not found", command));
     }
 }

@@ -1,5 +1,5 @@
 /// Tokenize input with support for single quotes, double quotes, and backslash escapes.
-pub fn tokenize(input: &str) -> Vec<String> {
+pub fn tokenize(input: &str) -> Result<Vec<String>, String> {
     let mut tokens = Vec::new();
     let mut current = String::new();
     let mut chars = input.chars().peekable();
@@ -10,23 +10,28 @@ pub fn tokenize(input: &str) -> Vec<String> {
             '\'' => {
                 chars.next();
                 in_token = true;
-                // Read until closing single quote (no escaping inside single quotes)
+                let mut closed = false;
                 while let Some(&c) = chars.peek() {
                     if c == '\'' {
                         chars.next();
+                        closed = true;
                         break;
                     }
                     current.push(c);
                     chars.next();
                 }
+                if !closed {
+                    return Err("syntax error: unterminated single quote".into());
+                }
             }
             '"' => {
                 chars.next();
                 in_token = true;
-                // Inside double quotes: backslash escapes \, ", $, newline
+                let mut closed = false;
                 while let Some(&c) = chars.peek() {
                     if c == '"' {
                         chars.next();
+                        closed = true;
                         break;
                     }
                     if c == '\\' {
@@ -38,7 +43,6 @@ pub fn tokenize(input: &str) -> Vec<String> {
                                     chars.next();
                                 }
                                 _ => {
-                                    // Backslash is literal if not followed by special char
                                     current.push('\\');
                                 }
                             }
@@ -50,11 +54,13 @@ pub fn tokenize(input: &str) -> Vec<String> {
                         chars.next();
                     }
                 }
+                if !closed {
+                    return Err("syntax error: unterminated double quote".into());
+                }
             }
             '\\' => {
                 chars.next();
                 in_token = true;
-                // Outside quotes: backslash escapes the next character
                 if let Some(&next) = chars.peek() {
                     current.push(next);
                     chars.next();
@@ -79,5 +85,5 @@ pub fn tokenize(input: &str) -> Vec<String> {
         tokens.push(current);
     }
 
-    tokens
+    Ok(tokens)
 }

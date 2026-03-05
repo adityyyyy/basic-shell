@@ -6,17 +6,30 @@ use crate::redirect::Redirections;
 
 pub const BUILTINS: &[&str] = &["exit", "echo", "type", "pwd", "cd"];
 
-/// Run a builtin command. Returns `true` if the shell should exit.
-pub fn run(command: &str, args: &[&str], redir: &mut Redirections) -> bool {
+/// Run a builtin command. Returns `Some(exit_code)` if the shell should exit.
+pub fn run(command: &str, args: &[&str], redir: &mut Redirections) -> Option<i32> {
     match command {
-        "exit" => return true,
+        "exit" => return cmd_exit(args, redir),
         "echo" => cmd_echo(args, redir),
         "type" => cmd_type(args, redir),
         "pwd" => cmd_pwd(redir),
         "cd" => cmd_cd(args, redir),
         _ => unreachable!("not a builtin: {}", command),
     }
-    false
+    None
+}
+
+fn cmd_exit(args: &[&str], redir: &mut Redirections) -> Option<i32> {
+    match args.first() {
+        Some(s) => match s.parse::<i32>() {
+            Ok(code) => Some(code),
+            Err(_) => {
+                redir.write_err(&format!("exit: {}: numeric argument required", s));
+                None
+            }
+        },
+        None => Some(0),
+    }
 }
 
 fn cmd_echo(args: &[&str], redir: &mut Redirections) {

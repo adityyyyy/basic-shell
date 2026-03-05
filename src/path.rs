@@ -5,7 +5,7 @@ use std::path::{Path, PathBuf};
 
 /// Search for an executable by name, checking absolute paths and `$PATH`.
 pub fn find_executable(cmd: &str) -> Option<PathBuf> {
-    if cmd.starts_with("/") {
+    if cmd.contains('/') {
         let path = Path::new(cmd);
         if is_executable(path) {
             return Some(path.to_path_buf());
