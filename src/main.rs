@@ -82,6 +82,15 @@ fn save_history(
 ) {
     #[cfg(feature = "with-file-history")]
     if let Ok(histfile) = env::var("HISTFILE") {
-        let _ = rl.save_history(std::path::Path::new(&histfile));
+        if let Ok(mut f) = std::fs::OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(&histfile)
+        {
+            use std::io::Write;
+            for entry in rl.history().iter() {
+                let _ = writeln!(f, "{}", entry);
+            }
+        }
     }
 }
