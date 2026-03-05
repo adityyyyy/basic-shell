@@ -10,6 +10,7 @@ use shell::tokenizer::tokenize;
 
 fn main() {
     let mut rl = shell::completions::get_reader();
+    let mut last_flushed: usize = 0;
     loop {
         let readline = rl.readline("$ ");
         let input = match readline {
@@ -59,7 +60,7 @@ fn main() {
             let args: Vec<&str> = cmd_tokens[1..].iter().map(|s| s.as_str()).collect();
 
             if command == "history" {
-                cmd_history(&mut rl, &args, &mut redir);
+                cmd_history(&mut rl, &args, &mut redir, &mut last_flushed);
             } else if BUILTINS.contains(&command.as_str()) {
                 if let Some(code) = builtins::run(command, &args, &mut redir) {
                     save_history(&mut rl);

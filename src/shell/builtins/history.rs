@@ -7,7 +7,7 @@ use rustyline::history::{DefaultHistory, History};
 
 pub type Rl = rustyline::Editor<MyHelper, DefaultHistory>;
 
-pub fn cmd_history(rl: &mut Rl, args: &[&str], redir: &mut Redirections) {
+pub fn cmd_history(rl: &mut Rl, args: &[&str], redir: &mut Redirections, last_flushed: &mut usize) {
     match args.first().copied() {
         Some("-c") => {
             if rl.clear_history().is_err() {
@@ -29,13 +29,16 @@ pub fn cmd_history(rl: &mut Rl, args: &[&str], redir: &mut Redirections) {
         Some("-a") => {
             if let Some(filename) = args.get(1) {
                 let entries: Vec<_> = rl.history().iter().collect();
-                match OpenOptions::new().create(true).append(true).open(filename) {
-                    Ok(mut f) => {
-                        for entry in &entries {
-                            let _ = writeln!(f, "{}", entry);
+                if *last_flushed < entries.len() {
+                    match OpenOptions::new().create(true).append(true).open(filename) {
+                        Ok(mut f) => {
+                            for entry in &entries[*last_flushed..] {
+                                let _ = writeln!(f, "{}", entry);
+                            }
+                            *last_flushed = entries.len();
                         }
+                        Err(e) => redir.write_err(&format!("history: {}: {}", filename, e)),
                     }
-                    Err(e) => redir.write_err(&format!("history: {}: {}", filename, e)),
                 }
             } else {
                 redir.write_err("history: -a: option requires an argument");
