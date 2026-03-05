@@ -67,9 +67,7 @@ pub fn get_reader() -> Editor<MyHelper, DefaultHistory> {
     rl.set_auto_add_history(true);
 
     #[cfg(feature = "with-file-history")]
-    if rl.load_history("history.txt").is_err() {
-        eprintln!("No previous history");
-    }
+    let _ = rl.load_history("history.txt");
 
     rl
 }

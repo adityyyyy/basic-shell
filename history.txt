@@ -1,9 +1,2 @@
 #V2
-1
-exi
-exit
-echo 
-exit
-cls
-clear
 exit
