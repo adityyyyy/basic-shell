@@ -1,7 +1,7 @@
 mod shell;
 
 use rustyline::error::ReadlineError;
-use shell::builtins::{self, cmd_history, BUILTINS};
+use shell::builtins::{self, BUILTINS, cmd_history};
 use shell::exec;
 use shell::redirect;
 use shell::tokenizer::tokenize;
@@ -11,9 +11,7 @@ fn main() {
     loop {
         let readline = rl.readline("$ ");
         let input = match readline {
-            Ok(line) => {
-                line
-            }
+            Ok(line) => line,
             Err(ReadlineError::Interrupted) => {
                 println!("CTRL-C");
                 break;
@@ -59,7 +57,7 @@ fn main() {
             let args: Vec<&str> = cmd_tokens[1..].iter().map(|s| s.as_str()).collect();
 
             if command == "history" {
-                cmd_history(&rl, &args, &mut redir);
+                cmd_history(&mut rl, &args, &mut redir);
             } else if BUILTINS.contains(&command.as_str()) {
                 if let Some(code) = builtins::run(command, &args, &mut redir) {
                     save_history(&mut rl);
@@ -77,7 +75,9 @@ fn main() {
 }
 
 #[allow(unused_variables)]
-fn save_history(rl: &mut rustyline::Editor<shell::completions::MyHelper, rustyline::history::DefaultHistory>) {
+fn save_history(
+    rl: &mut rustyline::Editor<shell::completions::MyHelper, rustyline::history::DefaultHistory>,
+) {
     #[cfg(feature = "with-file-history")]
     let _ = rl.save_history("history.txt");
 }

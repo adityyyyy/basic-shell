@@ -1,10 +1,12 @@
+use std::path::Path;
+
 use crate::shell::completions::MyHelper;
 use crate::shell::redirect::Redirections;
 use rustyline::history::{DefaultHistory, History};
 
 pub type Rl = rustyline::Editor<MyHelper, DefaultHistory>;
 
-pub fn cmd_history(rl: &Rl, args: &[&str], redir: &mut Redirections) {
+pub fn cmd_history(rl: &mut Rl, args: &[&str], redir: &mut Redirections) {
     match args.first().copied() {
         Some("-c") => {
             // Clear is not supported via immutable ref; inform user
@@ -20,6 +22,15 @@ pub fn cmd_history(rl: &Rl, args: &[&str], redir: &mut Redirections) {
                 }
             } else {
                 redir.write_err("history: -d: option requires an argument");
+            }
+        }
+        Some("-r") => {
+            if let Some(filename) = args.get(1) {
+                if rl.load_history(Path::new(filename)).is_err() {
+                    redir.write_err(&format!("history: {} invalid option", filename));
+                }
+            } else {
+                redir.write_err("history: -r option requires an argument");
             }
         }
         Some(n_str) => match n_str.parse::<usize>() {
