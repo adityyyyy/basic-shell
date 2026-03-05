@@ -1,10 +1,16 @@
-mod path_resolver;
+mod executable_file_absolute_path_resolver;
+mod tokenizer;
+mod utils;
 
-use path_resolver::find_executable;
+use executable_file_absolute_path_resolver::find_executable;
 use std::{
-    env, fs,
+    env,
     io::{self, Write},
 };
+use tokenizer::tokenize;
+use utils::resolve_directory;
+
+const BUILTIN_COMMANDS: &[&str] = &["exit", "echo", "type", "pwd", "cd"];
 
 fn main() {
     let mut buf = String::new();
@@ -13,36 +19,43 @@ fn main() {
         buf.clear();
         print!("$ ");
         io::stdout().flush().unwrap();
-        if io::stdin().read_line(&mut buf).unwrap() == 0 {
-            continue;
-        };
+        match io::stdin().read_line(&mut buf) {
+            Ok(0) => break,
+            Ok(_) => {}
+            Err(err) => {
+                eprintln!("shell: failed to read input: {}", err);
+                break;
+            }
+        }
         let input = buf.trim();
         if input.is_empty() {
             continue;
         }
 
-        let available_commands = ["exit", "echo", "type", "pwd"];
+        let tokens = tokenize(input);
+        if tokens.is_empty() {
+            continue;
+        }
 
-        let mut parts = input.split_whitespace();
-        let command = parts.next().unwrap();
-        let args: Vec<&str> = parts.collect();
+        let command = &tokens[0];
+        let args: Vec<&str> = tokens[1..].iter().map(|s| s.as_str()).collect();
 
-        match command {
+        match command.as_str() {
             "exit" => break,
             "echo" => {
                 println!("{}", args.join(" "));
             }
             "type" => {
                 if let Some(cmd) = args.first() {
-                    if available_commands.contains(cmd) {
+                    if BUILTIN_COMMANDS.contains(cmd) {
                         println!("{cmd} is a shell builtin");
-                        continue;
-                    }
-                    if let Some(path) = find_executable(cmd) {
+                    } else if let Some(path) = find_executable(cmd) {
                         println!("{} is {}", cmd, path.display());
                     } else {
                         println!("{}: not found", cmd);
                     }
+                } else {
+                    eprintln!("type: missing argument");
                 }
             }
             "pwd" => match env::current_dir() {
@@ -50,15 +63,44 @@ fn main() {
                     println!("{}", path.display());
                 }
                 Err(err) => {
-                    eprintln!("pwd: {}", err)
+                    eprintln!("pwd: {}", err);
                 }
             },
+            "cd" => {
+                let target = if let Some(dir) = args.first() {
+                    dir.to_string()
+                } else {
+                    // cd with no args goes to $HOME
+                    match env::var("HOME") {
+                        Ok(home) => home,
+                        Err(_) => {
+                            eprintln!("cd: HOME not set");
+                            continue;
+                        }
+                    }
+                };
+                match resolve_directory(&target) {
+                    Ok(path) => {
+                        if let Err(err) = env::set_current_dir(&path) {
+                            eprintln!("cd: {}: {}", target, err);
+                        }
+                    }
+                    Err(err) => {
+                        eprintln!("cd: {}", err);
+                    }
+                }
+            }
             _ => {
-                if let Some(_path) = find_executable(command) {
-                    std::process::Command::new(command)
-                        .args(args)
+                if find_executable(command).is_some() {
+                    match std::process::Command::new(command.as_str())
+                        .args(&args)
                         .status()
-                        .unwrap();
+                    {
+                        Ok(_status) => {}
+                        Err(err) => {
+                            eprintln!("{}: {}", command, err);
+                        }
+                    }
                 } else {
                     println!("{}: command not found", command);
                 }

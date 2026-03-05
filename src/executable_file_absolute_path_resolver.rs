@@ -22,14 +22,18 @@ pub fn find_executable(cmd: &str) -> Option<std::path::PathBuf> {
 }
 
 fn is_executable(path: &std::path::Path) -> bool {
-    std::fs::metadata(path)
-        .ok()
-        .filter(|m| m.is_file())
-        .map(|m| {
+    match std::fs::metadata(path) {
+        Ok(m) if m.is_file() => {
             #[cfg(unix)]
             {
                 m.permissions().mode() & 0o111 != 0
             }
-        })
-        .unwrap_or(false)
+            #[cfg(not(unix))]
+            {
+                // On non-unix, just check if it's a file
+                true
+            }
+        }
+        _ => false,
+    }
 }
