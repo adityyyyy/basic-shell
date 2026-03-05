@@ -1,5 +1,5 @@
 use std::{
-    fs::{self, File, OpenOptions},
+    fs::{File, OpenOptions},
     io::Write,
     path::Path,
     process::Stdio,
@@ -106,8 +106,6 @@ pub fn parse(tokens: &[String]) -> Result<(Vec<String>, Redirections), String> {
     ))
 }
 
-// ── helpers ──────────────────────────────────────────────────────────
-
 fn next_filename<'a>(tokens: &'a [String], pos: usize) -> Result<&'a str, String> {
     tokens
         .get(pos + 1)
@@ -115,25 +113,13 @@ fn next_filename<'a>(tokens: &'a [String], pos: usize) -> Result<&'a str, String
         .ok_or_else(|| "syntax error: expected filename after redirection".to_string())
 }
 
-fn ensure_parent_dirs(path: &Path) -> Result<(), String> {
-    if let Some(parent) = path.parent()
-        && !parent.as_os_str().is_empty()
-        && !parent.exists()
-    {
-        fs::create_dir_all(parent).map_err(|e| format!("{}: {}", path.display(), e))?;
-    }
-    Ok(())
-}
-
 fn open_truncate(filename: &str) -> Result<File, String> {
     let path = Path::new(filename);
-    // ensure_parent_dirs(path)?;
     File::create(path).map_err(|e| format!("{}: {}", filename, e))
 }
 
 fn open_append(filename: &str) -> Result<File, String> {
     let path = Path::new(filename);
-    // ensure_parent_dirs(path)?;
     OpenOptions::new()
         .create(true)
         .append(true)

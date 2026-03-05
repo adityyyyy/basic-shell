@@ -1,5 +1,5 @@
-use crate::builtins::BUILTINS;
-use crate::path::list_executables;
+use super::builtins::BUILTINS;
+use super::util::path::list_executables;
 use rustyline::{
     CompletionType, Context, Editor, Helper, Highlighter, Hinter, Result, Validator,
     completion::{Completer, FilenameCompleter, Pair, extract_word},
@@ -19,7 +19,6 @@ impl Completer for MyHelper {
     fn complete(&self, line: &str, pos: usize, ctx: &Context<'_>) -> Result<(usize, Vec<Pair>)> {
         let (word_start, prefix) = extract_word(line, pos, None, |c: char| c == ' ');
 
-        // If we're on the first word, complete commands; otherwise complete filenames
         let is_first_word = line[..word_start].trim().is_empty();
 
         if is_first_word {

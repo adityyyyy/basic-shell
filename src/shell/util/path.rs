@@ -11,10 +11,10 @@ pub fn list_executables() -> Vec<String> {
         for dir in std::env::split_paths(&paths) {
             if let Ok(entries) = std::fs::read_dir(&dir) {
                 for entry in entries.flatten() {
-                    if is_executable(&entry.path()) {
-                        if let Some(name) = entry.file_name().to_str() {
-                            names.insert(name.to_string());
-                        }
+                    if is_executable(&entry.path())
+                        && let Some(name) = entry.file_name().to_str()
+                    {
+                        names.insert(name.to_string());
                     }
                 }
             }
