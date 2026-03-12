@@ -86,3 +86,59 @@ src/
 | Feature | Default | Description |
 |---------|---------|-------------|
 | `with-file-history` | yes | Enable persistent history via `HISTFILE` |
+
+## Roadmap
+
+### Phase 1 — Core Shell Fundamentals
+
+- [ ] **Variable expansion** — `$VAR`, `${VAR}`, `$?` (last exit code), `$$` (PID)
+- [ ] **Stdin redirection** — `<` and heredocs (`<<`, `<<<`)
+- [ ] **Command chaining** — `&&`, `||`, `;` operators
+- [ ] **Globbing** — `*`, `?`, `[...]` pattern expansion
+- [ ] **Fix `history -d`** — currently a stub that doesn't delete entries
+
+### Phase 2 — Job Control & Signals
+
+- [ ] **Background execution** — `&` operator, `jobs`, `fg`, `bg` builtins
+- [ ] **Signal handling** — proper SIGINT/SIGTSTP/SIGCHLD forwarding to child processes
+- [ ] **Process group management** — `setpgid`/`tcsetpgrp` for correct terminal ownership
+
+### Phase 3 — Scripting Support
+
+- [ ] **Control flow** — `if`/`else`/`fi`, `while`/`do`/`done`, `for`/`in`/`do`/`done`
+- [ ] **Functions** — user-defined shell functions
+- [ ] **Script execution** — run `.sh` files from arguments (`./myshell script.sh`)
+- [ ] **`source` / `.` builtin** — execute scripts in the current shell context
+- [ ] **Exit codes** — consistent `$?` propagation across pipelines and builtins
+
+### Phase 4 — Environment & Configuration
+
+- [ ] **`export` / `unset` / `set` builtins** — environment variable management
+- [ ] **Startup files** — `~/.myshellrc` loaded at startup
+- [ ] **Aliases** — `alias`/`unalias` builtins
+- [ ] **Prompt customization** — configurable `PS1` with escape sequences (username, hostname, cwd, git branch)
+
+### Phase 5 — Improved UX
+
+- [ ] **Dynamic completions** — rescan `$PATH` on demand instead of caching once at startup
+- [ ] **Syntax highlighting** — colorize input as the user types (via `rustyline`'s `Highlighter` trait)
+- [ ] **Smarter history** — deduplication, substring search (`Ctrl-R`), per-directory history
+- [ ] **`help` builtin** — usage info for all builtins
+- [ ] **Pipeline stdin for builtins** — allow builtins like `echo` to read piped input
+
+### Phase 6 — Advanced Features
+
+- [ ] **Command substitution** — `` `cmd` `` and `$(cmd)`
+- [ ] **Process substitution** — `<(cmd)`, `>(cmd)`
+- [ ] **Arithmetic expansion** — `$((expr))`
+- [ ] **Subshells** — `(cmd1; cmd2)` grouping
+- [ ] **`trap` builtin** — custom signal handlers
+- [ ] **`test` / `[` builtin** — conditional expressions
+
+### Phase 7 — Polish & Distribution
+
+- [ ] **Comprehensive error messages** — contextual suggestions on typos (did-you-mean)
+- [ ] **POSIX compliance testing** — run against a conformance suite
+- [ ] **Cross-platform support** — Windows via `windows-sys` (or scope to Unix-only explicitly)
+- [ ] **CI/CD & packaging** — GitHub Actions, `cargo install`, Homebrew formula
+- [ ] **Documentation** — man page, `--help` flag, contributor guide
